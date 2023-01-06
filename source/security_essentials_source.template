@@ -1,0 +1,283 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This template installs the Baseline security assessment custom lens (SO9098) and deploys the Assessor Lambda function as well as triggers the function.
+     
+Resources:  
+  LambdaAssessorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join [ "-", ["LambdaAssessorRole", !Select [2, !Split [ "/", !Ref 'AWS::StackId']]]]
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+        - !Ref LambdaAssessorBasicPolicy
+        - !Ref LambdaAssessorAccountPolicy
+        - !Ref LambdaAssessorS3Policy
+        - !Ref LambdaAssessorSecurityPolicy
+        - !Ref LambdaAssessorConfigurationsPolicy
+        - !Ref LambdaAssesorDetectiveControlsPolicy
+        - !Ref LambdaAssessorWAPolicy
+        - !Ref LambdaAssessorWebPolicy
+
+  LambdaAssessorBasicPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Join [ "-", ["LambdaAssessorBasicPolicy", !Select [2, !Split [ "/", !Ref 'AWS::StackId']]]]
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:*"
+
+  LambdaAssessorAccountPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Join [ "-", ["LambdaAssessorAccountPolicy", !Select [2, !Split [ "/", !Ref 'AWS::StackId']]]]
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: Allow
+            Action:
+              - account:GetAlternateContact
+            Resource: !Sub "arn:${AWS::Partition}:account::${AWS::AccountId}:account"
+
+  LambdaAssessorS3Policy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName:  !Join [ "-", ["LambdaAssessorS3Policy", !Select [2, !Split [ "/", !Ref 'AWS::StackId']]]]
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:ListBucket
+              - s3:PutObject
+              - s3:GetBucketWebsite
+              - s3:List*
+            Resource: 
+              - arn:aws:s3:::*/*
+              - arn:aws:s3:::*
+
+  LambdaAssessorSecurityPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Join [ "-", ["LambdaAssessorSecurityPolicy", !Select [2, !Split [ "/", !Ref 'AWS::StackId']]]]
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: Allow
+            Action:
+              - ec2:DescribeVpcs
+              - ec2:DescribeVolumes
+              - ec2:DescribeNetworkAcls
+              - ec2:DescribeSecurityGroups
+              - ec2:DescribeSecurityGroupRules
+              - access-analyzer:ListAnalyzers
+              - iam:ListRoles
+              - iam:ListUsers
+              - iam:ListGroups
+              - iam:GetAccountPasswordPolicy
+              - iam:GetAccountSummary
+            Resource: "*"           
+          -
+            Effect: Allow
+            Action:
+              - iam:GetUserPolicy
+              - iam:ListAttachedUserPolicies
+              - iam:ListAccessKeys
+            Resource: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:user/*"
+          -
+            Effect: Allow
+            Action:
+              - iam:GetRolePolicy
+              - iam:ListAttachedRolePolicies
+            Resource: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*"
+          -
+            Effect: Allow
+            Action:
+              - iam:GetGroupPolicy
+              - iam:ListAttachedGroupPolicies
+            Resource: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:group/*"
+          -
+            Effect: Allow
+            Action:
+              - iam:GetPolicyVersion
+              - iam:GetPolicy
+            Resource: "arn:aws:iam::*:policy/*"            
+          -
+            Effect: Allow
+            Action:
+              - ec2:DescribeVolumeAttribute
+            Resource: !Sub "arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:volume/*"            
+
+  LambdaAssessorConfigurationsPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Join [ "-", ["LambdaAssessorConfigurationsPolicy", !Select [2, !Split [ "/", !Ref 'AWS::StackId']]]]
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: Allow
+            Action:
+              - secretsmanager:ListSecrets
+              - ssm:DescribePatchGroups
+              - ssm:DescribeInstancePatchStates
+              - ssm:DescribeInstancePatches
+              - ssm:DescribePatchBaselines
+              - ssm:DescribePatchGroupState
+              - ssm:DescribePatchProperties
+              - ssm:DescribeAvailablePatches
+            Resource: "*"   
+          -
+            Effect: Allow
+            Action:
+              - ssm:DescribeEffectivePatchesForPatchBaseline
+            Resource: !Sub "arn:${AWS::Partition}:ssm:*:${AWS::AccountId}:patchbaseline/*"
+          -
+            Effect: Allow
+            Action:
+              - secretsmanager:DescribeSecret
+            Resource: !Sub "arn:${AWS::Partition}:secretsmanager:*:${AWS::AccountId}:secret:*"      
+
+  LambdaAssesorDetectiveControlsPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Join [ "-", ["LambdaAssesorDetectiveControlsPolicy", !Select [2, !Split [ "/", !Ref 'AWS::StackId']]]]
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: Allow
+            Action:
+              - cloudtrail:GetTrail
+              - cloudtrail:ListTrails
+              - cloudtrail:DescribeTrails
+              - cloudwatch:DescribeAlarmsForMetric
+              - cloudwatch:ListMetrics
+              - cloudwatch:GetMetricData
+            Resource: "*"   
+          -
+            Effect: Allow
+            Action:
+              - cloudwatch:DescribeAlarms
+            Resource: !Sub "arn:${AWS::Partition}:cloudwatch:*:${AWS::AccountId}:alarm:*"
+          -
+            Effect: Allow
+            Action:
+              - ce:GetAnomalySubscriptions
+            Resource: !Sub "arn:${AWS::Partition}:ce::${AWS::AccountId}:anomalysubscription/*"
+          -
+            Effect: Allow
+            Action:
+              - ce:GetAnomalyMonitors
+            Resource: !Sub "arn:${AWS::Partition}:ce::${AWS::AccountId}:anomalymonitor/*"
+
+  LambdaAssessorWAPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Join [ "-", ["LambdaAssessorWAPolicy", !Select [2, !Split [ "/", !Ref 'AWS::StackId']]]]
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: Allow
+            Action:
+              - wellarchitected:DeleteWorkload
+              - wellarchitected:UpdateAnswer
+              - wellarchitected:ListAnswers               
+            Resource: !Sub "arn:${AWS::Partition}:wellarchitected:*:${AWS::AccountId}:workload/*"
+          -
+            Effect: Allow
+            Action:
+              - wellarchitected:CreateLensVersion
+              - wellarchitected:DeleteLens
+            Resource: !Sub "arn:${AWS::Partition}:wellarchitected:*:${AWS::AccountId}:lens/*"            
+          -
+            Effect: Allow
+            Action:
+              - wellarchitected:ListWorkloads
+              - wellarchitected:ImportLens
+              - wellarchitected:CreateWorkload
+              - wellarchitected:ListLenses                             
+            Resource: "*"            
+
+  LambdaAssessorWebPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Join [ "-", ["LambdaAssessorWebPolicy", !Select [2, !Split [ "/", !Ref 'AWS::StackId']]]]
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:      
+          -
+            Effect: Allow
+            Action:
+              - wafv2:ListWebACLs
+              - cloudfront:ListDistributions
+              - elasticloadbalancing:DescribeLoadBalancerAttributes
+              - elasticloadbalancing:DescribeSSLPolicies
+              - elasticloadbalancing:DescribeLoadBalancers
+              - elasticloadbalancing:DescribeTargetGroupAttributes
+              - elasticloadbalancing:DescribeListeners
+              - elasticloadbalancing:DescribeTags
+              - elasticloadbalancing:DescribeAccountLimits
+              - elasticloadbalancing:DescribeTargetHealth
+              - elasticloadbalancing:DescribeTargetGroups
+              - elasticloadbalancing:DescribeListenerCertificates
+              - elasticloadbalancing:DescribeRules              
+            Resource: "*"   
+          -
+            Effect: Allow
+            Action:
+              - wafv2:ListResourcesForWebACL
+              - wafv2:GetWebACL 
+            Resource: !Sub "arn:${AWS::Partition}:wafv2:*:${AWS::AccountId}:*/webacl/*/*"
+          -
+            Effect: Allow
+            Action:
+              - cloudfront:GetDistribution
+              - cloudfront:GetDistributionConfig
+            Resource: !Sub "arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/*"
+          -
+            Effect: Allow
+            Action:
+              - cloudfront:GetOriginRequestPolicy
+              - cloudfront:GetOriginRequestPolicyConfig
+            Resource: !Sub "arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:origin-request-policy/*"            
+            
+  Primerinvoke:
+    Type: AWS::CloudFormation::CustomResource
+    Version: "1.0"
+    Properties:
+      ServiceToken: !GetAtt LambdaAssessorFunction.Arn             
+
+  LambdaAssessorFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Runtime: python3.9
+      Description: Security Essentials Assessment Lambda
+      MemorySize: 128
+      Timeout: 900
+      ReservedConcurrentExecutions: 2
+      Role: !GetAtt LambdaAssessorRole.Arn
+      FunctionName: !Join [ "-", ["BaselineSecurityAssessor", !Select [2, !Split [ "/", !Ref 'AWS::StackId']]]]
+      Code: 
+        ZipFile: |
